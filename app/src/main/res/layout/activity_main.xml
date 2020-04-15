@@ -7,11 +7,22 @@
     tools:context=".MainActivity">
 
     <Button
+        android:id="@+id/down_btn"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Sync Files"
+        android:layout_height="40dp"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="50dp"
+        android:text="Download Files"></Button>
+
+    <Button
         android:id="@+id/sync_btn"
-        android:layout_centerInParent="true"
-        ></Button>
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="70dp"
+        android:text="Sync files" />
+
 
 </RelativeLayout>
