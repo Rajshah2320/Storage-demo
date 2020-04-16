@@ -22,6 +22,7 @@ import com.google.firebase.storage.StorageMetadata;
 import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -39,8 +40,11 @@ public class MainActivity extends AppCompatActivity {
     private Task<StorageMetadata> metadata;
     private List<StorageReference> storageReferenceListCl;
     private List<StorageReference>storageReferenceListLoc;
+    private ArrayList<StorageReference> storageReferences= new ArrayList<>();
     private StorageReference mref;
     private StorageReference mref1;
+    private ListResult result;
+    private ArrayList<String> mdKey=new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
         syncBtn = findViewById(R.id.sync_btn);
         downBtn=findViewById(R.id.down_btn);
         mStorageRef = FirebaseStorage.getInstance().getReference();
+
+
 
         /*  metadata=mStorageRef.child("class1").child("episode2").child("topic3").child("Assignment for Android.docx").getMetadata();
 
@@ -61,18 +67,56 @@ public class MainActivity extends AppCompatActivity {
         });
 
        */
-        ref=mStorageRef.child("class1").child("episode2").child("topic1").listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+        ref=mStorageRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
             @Override
             public void onSuccess(ListResult listResult) {
+                for(StorageReference prefix:listResult.getPrefixes()) {
+                    prefix.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+                        @Override
+                        public void onSuccess(ListResult listResult) {
+                            for (StorageReference prefix : listResult.getPrefixes()) {
+                                Log.i("Prefix", prefix.toString());
+                                prefix.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+                                    @Override
+                                    public void onSuccess(ListResult listResult) {
+                                        for (StorageReference prefix : listResult.getPrefixes()) {
+                                            Log.i("Inner prefix", prefix.toString());
 
-                storageReferenceListCl=listResult.getItems();
+                                            prefix.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+                                                @Override
+                                                public void onSuccess(ListResult listResult) {
+                                                    for (StorageReference prefix : listResult.getItems()) {
+                                                        Log.i("Inner inner name", prefix.toString());
+                                                        storageReferences.add(prefix);
+                                                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                                                            @Override
+                                                            public void onSuccess(StorageMetadata storageMetadata) {
+                                                                mdKey.add(storageMetadata.getMd5Hash());
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.i("Prefix","Not found");
             }
         });
 
-        ref1 = mStorageRef.child("class1").child("episode1").child("topic1").child("RajShah_InternshalaResume.pdf");
-        ref2 = mStorageRef.child("class1").child("episode2").child("topic2").child("Links for uncovered topics.pdf");
-        ref3 = mStorageRef.child("class1").child("episode2").child("topic3").child("Assignment for Android.docx");
-        ref4 = mStorageRef.child("class1").child("episode2").child("topic1").child("AOA Assignment 1 (Sap 13).docx");
+      /*   ref1 = mStorageRef.child("class1").child("episode1").child("topic1").child("RajShah_InternshalaResume.pdf");
+         ref2 = mStorageRef.child("class1").child("episode2").child("topic2").child("Links for uncovered topics.pdf");
+         ref3 = mStorageRef.child("class1").child("episode2").child("topic3").child("Assignment for Android.docx");
+         ref4 = mStorageRef.child("class1").child("episode2").child("topic1").child("AOA Assignment 1 (Sap 13).docx");
 
        storageReferenceListLoc=new Vector<>();
 
@@ -80,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
         storageReferenceListLoc.add(ref2);
         storageReferenceListLoc.add(ref3);
         storageReferenceListLoc.add(ref4);
-
+*/
         downBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -146,7 +190,19 @@ public class MainActivity extends AppCompatActivity {
 
     public void file(){
 
-       ref1.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+        for(final StorageReference storageReference:storageReferences){
+            storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                @Override
+                public void onSuccess(Uri uri) {
+                downloadFile(MainActivity.this,storageReference.getName(),"",storageReference.getParent().getPath(),uri.toString());
+                }
+            });
+
+        }
+
+
+
+     /*  ref1.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
             public void onSuccess(Uri uri) {
 
@@ -194,7 +250,8 @@ public class MainActivity extends AppCompatActivity {
             public void onFailure(@NonNull Exception e) {
                 e.printStackTrace();
             }
-        });
+        });*/
+
     }
 
     public void downloadFile(Context context,String fileName,String fileExtension,String destDirectory,String url){
