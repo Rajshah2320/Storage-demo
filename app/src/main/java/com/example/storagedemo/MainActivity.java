@@ -22,23 +22,23 @@ import com.google.firebase.storage.StorageReference;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.Integer.max;
+
 public class MainActivity extends AppCompatActivity {
     private StorageReference mStorageRef;
-    private StorageReference ref1;
-    private StorageReference ref2;
-    private StorageReference ref3;
-    private StorageReference ref4;
     private Task<ListResult> ref;
     private Button syncBtn,downBtn;
     private String filetype,name;
     private Task<StorageMetadata> metadata;
-    private List<StorageReference> storageReferenceListCl;
-    private List<StorageReference>storageReferenceListLoc;
-    private ArrayList<StorageReference> storageReferences=new ArrayList<>();
+    private ArrayList<StorageReference> storageReferencesLoc=new ArrayList<>();
+    private ArrayList<StorageReference> storageReferencesCl=new ArrayList<>();
     private StorageReference mref;
     private StorageReference mref1;
     private ListResult result;
-    private ArrayList<String> mdKeyLoc,mdKeyCl,mdKey;
+    private ArrayList<String> mdKeyLoc=new ArrayList<>();
+    private ArrayList<String> mdKeyCl=new ArrayList<>();
+    private ArrayList<String> mdKey=new ArrayList<>();
+    private String TAG="Traverse";
 
 
     @Override
@@ -48,7 +48,8 @@ public class MainActivity extends AppCompatActivity {
         syncBtn = findViewById(R.id.sync_btn);
         downBtn = findViewById(R.id.down_btn);
         mStorageRef = FirebaseStorage.getInstance().getReference();
-        traversePath();
+        traversePathLoc(mStorageRef);
+
         downBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -60,172 +61,130 @@ public class MainActivity extends AppCompatActivity {
         syncBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                traversePathCl(mStorageRef);
                 sync();
 
-                // delete();
             }
         });
-
-
     }
 
-    public void traversePath(){
-
-        mdKey=new ArrayList<>();
-
-        ref=mStorageRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+    public void traversePathLoc(StorageReference rootPath){
+        ref=rootPath.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
             @Override
             public void onSuccess(ListResult listResult) {
-                if (!listResult.getPrefixes().isEmpty()) {
-                    for (StorageReference prefix : listResult.getPrefixes()) {
-                        prefix.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
-                            @Override
-                            public void onSuccess(ListResult listResult) {
-                                if (!listResult.getPrefixes().isEmpty()) {
-                                    for (StorageReference prefix : listResult.getPrefixes()) {
-                                        Log.i("Prefix", prefix.toString());
-                                        prefix.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
-                                            @Override
-                                            public void onSuccess(ListResult listResult) {
-                                                if (!listResult.getPrefixes().isEmpty()) {
-                                                    for (StorageReference prefix : listResult.getPrefixes()) {
-                                                        Log.i("Inner prefix", prefix.toString());
+                if(!listResult.getPrefixes().isEmpty()){
+                    for(int i=0;i<listResult.getPrefixes().size();i++){
+                        StorageReference prefix=listResult.getPrefixes().get(i);
+                        Log.i(TAG, "onSuccess: "+prefix.toString());
 
-                                                        prefix.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
-                                                            @Override
-                                                            public void onSuccess(ListResult listResult) {
-                                                                if (listResult.getPrefixes().isEmpty()) {
-                                                                    for (StorageReference prefix : listResult.getItems()) {
-                                                                        Log.i("Inner inner name", prefix.toString());
-                                                                        storageReferences.add(prefix);
-                                                                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                                                            @Override
-                                                                            public void onSuccess(StorageMetadata storageMetadata) {
-                                                                                mdKey.add(storageMetadata.getMd5Hash());
-                                                                            }
-                                                                        });
-                                                                    }
-                                                                } else {
-                                                                    for (StorageReference prefix : listResult.getItems()) {
-                                                                        Log.i("Inner inner name", prefix.toString());
-                                                                        storageReferences.add(prefix);
-                                                                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                                                            @Override
-                                                                            public void onSuccess(StorageMetadata storageMetadata) {
-                                                                                mdKey.add(storageMetadata.getMd5Hash());
-                                                                            }
-                                                                        });
-
-                                                                    }
-                                                                }
-                                                            }
-                                                        });
-                                                    }
-                                                }else {
-                                                    for (StorageReference prefix : listResult.getItems()) {
-                                                        Log.i("Inner inner name", prefix.toString());
-                                                        storageReferences.add(prefix);
-                                                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                                            @Override
-                                                            public void onSuccess(StorageMetadata storageMetadata) {
-                                                                mdKey.add(storageMetadata.getMd5Hash());
-                                                            }
-                                                        });
-
-                                                    }
-                                                }
-                                            }
-                                        });
-                                    }
-                                }else {
-                                    for (StorageReference prefix : listResult.getItems()) {
-                                        Log.i("Inner inner name", prefix.toString());
-                                        storageReferences.add(prefix);
-                                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                            @Override
-                                            public void onSuccess(StorageMetadata storageMetadata) {
-                                                mdKey.add(storageMetadata.getMd5Hash());
-                                            }
-                                        });
-
-                                    }
-                                }
-                            }
-                        });
+                        traversePathLoc(prefix);
                     }
-                }else {
-                    for (StorageReference prefix : listResult.getItems()) {
-                        Log.i("Inner inner name", prefix.toString());
-                        storageReferences.add(prefix);
-                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                    for(int i=0;i<listResult.getItems().size();i++){
+                        Log.i("FILE", "onSuccess: Folder "+listResult.getItems().get(i).toString());
+                        storageReferencesLoc.add(listResult.getItems().get(i));
+                        listResult.getItems().get(i).getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
                             @Override
                             public void onSuccess(StorageMetadata storageMetadata) {
                                 mdKey.add(storageMetadata.getMd5Hash());
                             }
                         });
 
+
                     }
                 }
+                else{
+                    for (StorageReference prefix : listResult.getItems()) {
+                        Log.i("File Name", prefix.toString());
+                        storageReferencesLoc.add(prefix);
+                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                            @Override
+                            public void onSuccess(StorageMetadata storageMetadata) {
+                                mdKeyLoc.add(storageMetadata.getMd5Hash());
+                            }
+                        });
+                    }
 
-            } }).addOnFailureListener(new OnFailureListener() {
+                }
+
+            }
+        }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Log.i("Prefix","Not found");
+                e.printStackTrace();
             }
         });
+
     }
 
-      /*   ref1 = mStorageRef.child("class1").child("episode1").child("topic1").child("RajShah_InternshalaResume.pdf");
-         ref2 = mStorageRef.child("class1").child("episode2").child("topic2").child("Links for uncovered topics.pdf");
-         ref3 = mStorageRef.child("class1").child("episode2").child("topic3").child("Assignment for Android.docx");
-         ref4 = mStorageRef.child("class1").child("episode2").child("topic1").child("AOA Assignment 1 (Sap 13).docx");
+    public void traversePathCl(StorageReference rootPath){
+        ref=rootPath.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+            @Override
+            public void onSuccess(ListResult listResult) {
+                if(!listResult.getPrefixes().isEmpty()){
+                    for(int i=0;i<listResult.getPrefixes().size();i++){
+                        StorageReference prefix=listResult.getPrefixes().get(i);
+                        Log.i(TAG, "onSuccess: "+prefix.toString());
 
-       storageReferenceListLoc=new Vector<>();
+                        traversePathLoc(prefix);
+                    }
+                    for(int i=0;i<listResult.getItems().size();i++){
+                        Log.i("FILE", "onSuccess: Folder "+listResult.getItems().get(i).toString());
+                        storageReferencesCl.add(listResult.getItems().get(i));
+                        listResult.getItems().get(i).getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                            @Override
+                            public void onSuccess(StorageMetadata storageMetadata) {
+                                mdKeyCl.add(storageMetadata.getMd5Hash());
+                            }
+                        });
 
-        storageReferenceListLoc.add(ref1);
-        storageReferenceListLoc.add(ref2);
-        storageReferenceListLoc.add(ref3);
-        storageReferenceListLoc.add(ref4);
-*/
 
-    public void sync() {
+                    }
+                }
+                else{
+                    for (StorageReference prefix : listResult.getItems()) {
+                        Log.i("File Name", prefix.toString());
+                        storageReferencesCl.add(prefix);
+                        prefix.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                            @Override
+                            public void onSuccess(StorageMetadata storageMetadata) {
+                                mdKeyCl.add(storageMetadata.getMd5Hash());
+                            }
+                        });
+                    }
 
-        for (int i=0;i<storageReferenceListCl.size();i++){
+                }
 
-           mref= storageReferenceListCl.get(i);
-           name=mref.getName();
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                e.printStackTrace();
+            }
+        });
 
-           mref.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-               @Override
-               public void onSuccess(StorageMetadata storageMetadata) {
-                   filetype= storageMetadata.getName();
-               }
-           });
-           if(!storageReferenceListLoc.contains(mref)){
+    }
 
-               mref.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                   @Override
-                   public void onSuccess(Uri uri) {
+    public void sync(){
+        for(final StorageReference storageReference:storageReferencesCl){
 
-                       downloadFile(MainActivity.this,name,"","class1/episode2/topic1",uri.toString());
+            if(!storageReferencesLoc.contains(storageReference)){
+                storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                    @Override
+                    public void onSuccess(Uri uri) {
 
-                   }
-               });
-
-           }
+                        downloadFile(MainActivity.this,storageReference.getName(),"",storageReference.getParent().getPath(),uri.toString());
+                    }
+                });
+            }
         }
-    }
 
-    public void delete(){
+        for(StorageReference storageReference:storageReferencesLoc){
 
-        for (int i=0;i<storageReferenceListLoc.size();i++){
-
-            mref1=storageReferenceListLoc.get(i);
-            if(!storageReferenceListCl.contains(mref1)){
-                mref1.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+            if(!storageReferencesCl.contains(storageReference)){
+                storageReference.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        Log.d("File deleted", " success ");
+                        Log.i("file deleted", "onSuccess: ");
                     }
                 });
             }
@@ -234,9 +193,10 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
     public void file(){
 
-        for(final StorageReference storageReference:storageReferences){
+        for(final StorageReference storageReference:storageReferencesLoc){
             storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                 @Override
                 public void onSuccess(Uri uri) {
@@ -245,6 +205,7 @@ public class MainActivity extends AppCompatActivity {
             });
 
         }
+        storageReferencesLoc.clear();
 
     }
 
