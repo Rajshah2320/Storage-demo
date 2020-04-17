@@ -19,6 +19,7 @@ import com.google.firebase.storage.ListResult;
 import com.google.firebase.storage.StorageMetadata;
 import com.google.firebase.storage.StorageReference;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,23 +27,23 @@ import static java.lang.Integer.max;
 
 public class MainActivity extends AppCompatActivity {
     private StorageReference mStorageRef;
-    private Task<ListResult> ref;
     private Button syncBtn,downBtn;
-    private String filetype,name;
-    private Task<StorageMetadata> metadata;
     private ArrayList<StorageReference> storageReferencesLoc=new ArrayList<>();
     private ArrayList<StorageReference> storageReferencesCl=new ArrayList<>();
-    private StorageReference mref;
-    private StorageReference mref1;
-    private ListResult result;
     private ArrayList<String> mdKeyLoc=new ArrayList<>();
     private ArrayList<String> mdKeyCl=new ArrayList<>();
     private ArrayList<String> mdKey=new ArrayList<>();
     private String TAG="Traverse";
+    private File[] fileLoc;
+    private ArrayList<String > fileNameLoc=new ArrayList<>();
+    private ArrayList<String > fileNameCl=new ArrayList<>();
+    private int j,k;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         syncBtn = findViewById(R.id.sync_btn);
@@ -50,29 +51,50 @@ public class MainActivity extends AppCompatActivity {
         mStorageRef = FirebaseStorage.getInstance().getReference();
         traversePathLoc(mStorageRef);
 
+        fileLoc= getApplicationContext().getFilesDir().listFiles();
+
+
         downBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
                 file();
+
             }
         });
 
         syncBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                traversePathCl(mStorageRef);
-                sync();
+                compare(fileLoc);
+                // traversePathCl(mStorageRef);
+             //   sync();
 
             }
         });
     }
 
+    public void compare(File[] files){
+        for(File file :files){
+            if(file.isDirectory()){
+                compare(file.listFiles());
+                Log.i("Local dir folder", file.getPath());
+            }else{
+
+                Log.i("Local  file", file.getPath());
+               fileNameCl.add(file.getPath());
+
+            }
+
+        }
+
+    }
+
     public void traversePathLoc(StorageReference rootPath){
-        ref=rootPath.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+        rootPath.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
             @Override
             public void onSuccess(ListResult listResult) {
-                if(!listResult.getPrefixes().isEmpty()){
+               // if(!listResult.getPrefixes().isEmpty()){
                     for(int i=0;i<listResult.getPrefixes().size();i++){
                         StorageReference prefix=listResult.getPrefixes().get(i);
                         Log.i(TAG, "onSuccess: "+prefix.toString());
@@ -85,14 +107,12 @@ public class MainActivity extends AppCompatActivity {
                         listResult.getItems().get(i).getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
                             @Override
                             public void onSuccess(StorageMetadata storageMetadata) {
-                                mdKey.add(storageMetadata.getMd5Hash());
+                                mdKeyLoc.add(storageMetadata.getMd5Hash());
                             }
                         });
-
-
                     }
-                }
-                else{
+              //  }
+               /* else{
                     for (StorageReference prefix : listResult.getItems()) {
                         Log.i("File Name", prefix.toString());
                         storageReferencesLoc.add(prefix);
@@ -106,6 +126,8 @@ public class MainActivity extends AppCompatActivity {
 
                 }
 
+                */
+
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -117,27 +139,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void traversePathCl(StorageReference rootPath){
-        ref=rootPath.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+        rootPath.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
             @Override
             public void onSuccess(ListResult listResult) {
                 if(!listResult.getPrefixes().isEmpty()){
                     for(int i=0;i<listResult.getPrefixes().size();i++){
                         StorageReference prefix=listResult.getPrefixes().get(i);
                         Log.i(TAG, "onSuccess: "+prefix.toString());
-
                         traversePathLoc(prefix);
+
                     }
                     for(int i=0;i<listResult.getItems().size();i++){
+
                         Log.i("FILE", "onSuccess: Folder "+listResult.getItems().get(i).toString());
                         storageReferencesCl.add(listResult.getItems().get(i));
                         listResult.getItems().get(i).getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
                             @Override
                             public void onSuccess(StorageMetadata storageMetadata) {
                                 mdKeyCl.add(storageMetadata.getMd5Hash());
+                                fileNameCl.add(storageMetadata.getPath());
+                                Log.i("Path", storageMetadata.getPath());
                             }
                         });
-
-
                     }
                 }
                 else{
@@ -148,12 +171,11 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onSuccess(StorageMetadata storageMetadata) {
                                 mdKeyCl.add(storageMetadata.getMd5Hash());
+                                fileNameCl.add(storageMetadata.getPath());
                             }
                         });
                     }
-
                 }
-
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -165,32 +187,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void sync(){
-        for(final StorageReference storageReference:storageReferencesCl){
+        for(j=0;j<storageReferencesCl.size();j++){
 
-            if(!storageReferencesLoc.contains(storageReference)){
-                storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            if(!fileNameLoc.contains(storageReferencesCl.get(j).getPath())){
+
+                storageReferencesCl.get(j).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                     @Override
                     public void onSuccess(Uri uri) {
 
-                        downloadFile(MainActivity.this,storageReference.getName(),"",storageReference.getParent().getPath(),uri.toString());
+                        downloadFile(MainActivity.this,storageReferencesCl.get(j).getName(),"",storageReferencesCl.get(j).getParent().getPath(),uri.toString());
                     }
                 });
             }
         }
 
-        for(StorageReference storageReference:storageReferencesLoc){
+        for(k=0;k<fileNameLoc.size();k++){
 
-            if(!storageReferencesCl.contains(storageReference)){
-                storageReference.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.i("file deleted", "onSuccess: ");
-                    }
-                });
+            if(!fileNameCl.contains(fileNameLoc.get(k))){
+                    File file= new File(fileNameLoc.get(k));
+                    file.delete();
             }
+
         }
-
-
     }
 
 
