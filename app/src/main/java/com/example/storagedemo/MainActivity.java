@@ -5,22 +5,29 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.ListResult;
@@ -31,13 +38,15 @@ import com.google.firebase.storage.UploadTask;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.lang.Integer.max;
 
 public class MainActivity extends AppCompatActivity {
     private StorageReference mStorageRef,storageRef;
-    private Button syncBtn,downBtn;
+    private Button syncBtn,downBtn,loginBtn;
     private ArrayList<StorageReference> storageReferencesLoc=new ArrayList<>();
     private ArrayList<StorageReference> storageReferencesCl=new ArrayList<>();
     private ArrayList<String> mdKeyLoc=new ArrayList<>();
@@ -48,34 +57,97 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String > fileNameCl=new ArrayList<>();
     private int j,k;
     private ImageView imageView;
-
-
+    private TextView remoteTv;
+    private FirebaseRemoteConfig mFirebaseRemoteConfig;
+    private FirebaseAnalytics firebaseAnalytics;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
+        firebaseAnalytics=FirebaseAnalytics.getInstance(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         syncBtn = findViewById(R.id.sync_btn);
-        imageView=findViewById(R.id.image);
+        remoteTv=findViewById(R.id.remoteTv);
+        imageView = findViewById(R.id.image);
         downBtn = findViewById(R.id.down_btn);
+        loginBtn=findViewById(R.id.login_btn);
         mStorageRef = FirebaseStorage.getInstance().getReference();
-        storageRef=FirebaseStorage.getInstance().getReference();
+        storageRef = FirebaseStorage.getInstance().getReference();
 
-      //  traversePathCl(mStorageRef);
+       loginBtn.setOnClickListener(new View.OnClickListener() {
+           @Override
+           public void onClick(View view) {
+               new Handler().postDelayed(new Runnable() {
+                   @Override
+                   public void run() {
+                       Intent intent=new Intent(MainActivity.this,LoginActivity.class);
+                       startActivity(intent);
+                       finish();
+                   }
+               },3000);
+           }
+       });
+
+
+        mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
+        FirebaseRemoteConfigSettings configSettings = new FirebaseRemoteConfigSettings.Builder()
+                .build();
+        mFirebaseRemoteConfig.setConfigSettingsAsync(configSettings);
+
+        Map<String,Object> default_data=new HashMap<>();
+        default_data.put("version","v1");
+        default_data.put("btn_enable",false);
+        mFirebaseRemoteConfig.setDefaultsAsync(default_data);
+        //traversePathCl(mStorageRef);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            file= getApplicationContext().getExternalFilesDir("");
+            file = getApplicationContext().getExternalFilesDir("");
             compare(file);
         }
+
+        long cacheExpiration=0;
+        mFirebaseRemoteConfig.fetch(cacheExpiration)
+                .addOnCompleteListener(this, new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(MainActivity.this, "Fetch Succeeded",
+                                    Toast.LENGTH_SHORT).show();
+
+                            // After config data is successfully fetched, it must be activated before newly fetched
+                            // values are returned.
+                            mFirebaseRemoteConfig.activateFetched();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Fetch Failed",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        displayWelcomeMessage();
+                    }
+                });
 
 
         downBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            //    traversePathLoc(mStorageRef);
-                file();
 
+                Bundle params=new Bundle();
+                params.putString("Button_id","downBtn");
+                firebaseAnalytics.logEvent("Button_clicked", params);
+                //    traversePathLoc(mStorageRef);
+                //file();
+                mFirebaseRemoteConfig.fetch(0).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                   if(task.isSuccessful()){
+                        mFirebaseRemoteConfig.activate();
+                        downBtn.setText(mFirebaseRemoteConfig.getString("version"));
+                        syncBtn.setEnabled(mFirebaseRemoteConfig.getBoolean("btn_enable"));
+                   }
+                   else{
+                       Toast.makeText(MainActivity.this,"Error",Toast.LENGTH_SHORT).show();
+                   }
+                    }
+                });
 
             }
         });
@@ -83,13 +155,27 @@ public class MainActivity extends AppCompatActivity {
         syncBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                fileNameLoc.clear();
-                compare(file);
-                display();
-                 sync();
+
+                Bundle params=new Bundle();
+                params.putString("Button_id","syncBtn");
+                firebaseAnalytics.logEvent("Button_clicked", params);
+              //  fileNameLoc.clear();
+                //compare(file);
+                //display();
+                //sync();
+
 
             }
         });
+        // ATTENTION: This was auto-generated to handle app links.
+        Intent appLinkIntent = getIntent();
+        String appLinkAction = appLinkIntent.getAction();
+        Uri appLinkData = appLinkIntent.getData();
+    }
+
+    private void displayWelcomeMessage() {
+        String welcomeMessage = mFirebaseRemoteConfig.getString("welcome_message");
+        remoteTv.setText(welcomeMessage);
     }
 /*
     public void uploadFile(){
