@@ -29,6 +29,8 @@ import com.google.firebase.auth.FirebaseUser;
 
 import java.util.Arrays;
 import java.util.List;
+import com.facebook.FacebookSdk;
+import com.facebook.appevents.AppEventsLogger;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -44,7 +46,8 @@ public class LoginActivity extends AppCompatActivity {
         providers = Arrays.asList(
                 new AuthUI.IdpConfig.EmailBuilder().build(),
                 new AuthUI.IdpConfig.PhoneBuilder().build(),
-                new AuthUI.IdpConfig.GoogleBuilder().build()
+                new AuthUI.IdpConfig.GoogleBuilder().build(),
+                new AuthUI.IdpConfig.FacebookBuilder().build()
         );
 
         showSignInOptions();
@@ -70,7 +73,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private void showSignInOptions() {
         startActivityForResult(AuthUI.getInstance().createSignInIntentBuilder().
-                setAvailableProviders(providers).setTheme(R.style.AppTheme).
+                setAvailableProviders(providers).setTheme(R.style.myStyle).setLogo(R.mipmap.im).
                 build(), MY_REQUEST_CODE);
     }
 

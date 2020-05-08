@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">StorageDemo</string>
+    <string name="facebook_application_id">1153088721707569</string>
+    <string name="fb_login_protocol_scheme">fb1153088721707569</string>
 </resources>
